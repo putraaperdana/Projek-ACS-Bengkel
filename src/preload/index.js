@@ -1,13 +1,9 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
 // Custom APIs for renderer
-const api = {
-   getDoctors: (searchName) => ipcRenderer.invoke('getDoctors', searchName),
-   getDoctorReport: (doctorId) => ipcRenderer.invoke('getDoctorReport', doctorId),
-   getMedicineReport: (medicineCode) => ipcRenderer.invoke('getMedicineReport', medicineCode),
-   printPDF: () => ipcRenderer.invoke('printPDF')
-}
+const api = {}
+
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
 // just add to the DOM global.

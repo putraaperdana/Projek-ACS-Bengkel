@@ -1,9 +1,7 @@
-import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { getDoctorReport, getDoctors, getMedicineReport, getStudentReport, getStudents } from './model'
-import fs from 'fs'
 
 function createWindow() {
   // Create the browser window.
@@ -53,32 +51,6 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
-
-  ipcMain.handle('getDoctors', getDoctors)
-  ipcMain.handle('getDoctorReport', getDoctorReport)
-  ipcMain.handle('getMedicineReport', getMedicineReport) 
-  
-  ipcMain.handle('printPDF', async (event) => {
-      const savePath = dialog.showSaveDialogSync({
-         title: "Save report",
-         defaultPath: "report.pdf",
-      });
-      if (savePath) {
-         const win = BrowserWindow.fromWebContents(event.sender);
-         // options: https://www.electronjs.org/docs/latest/api/web-contents#contentsprinttopdfoptions
-         win.webContents
-            .printToPDF({ printBackground: true, pageSize: "A4" })
-            .then((data) => {
-               fs.writeFile(savePath, data, (error) => {
-               if (error) throw error;
-               console.log(`Wrote PDF successfully to ${savePath}`);
-               });
-            })
-            .catch((err) => {
-               throw err;
-            });
-      }
-  });
 
   createWindow()
 
