@@ -2,6 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import * as model from './model'
 
 function createWindow() {
   // Create the browser window.
@@ -51,6 +52,48 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  // Auth: login
+  ipcMain.handle('auth:login', async (event, { username, password }) => {
+    try {
+      const user = await model.authenticate(event, username, password)
+      return { ok: !!user, user }
+    } catch (err) {
+      console.error('auth:login error', err)
+      return { ok: false, error: err.message }
+    }
+  })
+
+  ipcMain.handle('customers:list', async () => {
+    return await model.listCustomers()
+  })
+
+  ipcMain.handle('parts:list', async () => {
+    return await model.listParts()
+  })
+
+  ipcMain.handle('mechanics:list', async () => {
+    return await model.listMechanics()
+  })
+
+  ipcMain.handle('workorders:create', async (event, userId, mechanicId, partsJson) => {
+    return await model.createWorkOrder(event, userId, mechanicId, partsJson)
+  })
+
+  ipcMain.handle('roles:list', async () => {
+    return await model.listRoles()
+  })
+
+  ipcMain.handle('auth:register', async (event, { username, password, role, fullName }) => {
+    try {
+      const u = await model.createUser(event, username, password, role, fullName)
+      if (u && u.error === 'USERNAME_EXISTS') return { ok: false, error: 'username_exists' }
+      return { ok: true, user: u }
+    } catch (err) {
+      console.error('auth:register error', err)
+      return { ok: false, error: err.message }
+    }
+  })
 
   createWindow()
 
