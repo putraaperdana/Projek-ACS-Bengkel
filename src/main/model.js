@@ -9,25 +9,40 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD
 });
 
+const firstProcedureRow = (resultSets) => {
+   if (!Array.isArray(resultSets)) return null;
+   const first = resultSets[0];
+   return Array.isArray(first) ? first[0] || null : null;
+};
+
 
 export const authenticate = async (event, username, password) => {
-   // Note: seed uses SHA2; in production use bcrypt.
-   const sql = `SELECT u.id, u.username, u.full_name, r.name as role
-                FROM users u
-                JOIN roles r ON r.id = u.role_id
-                WHERE u.username = ? AND u.password_hash = SHA2(?,256)`;
-   const [rows] = await pool.query(sql, [username, password]);
-   return rows[0] || null;
+   const [resultSets] = await pool.query('CALL sp_auth_login(?, ?)', [username, password]);
+   const row = firstProcedureRow(resultSets);
+   if (!row) return null;
+
+   return {
+      id: row.pengguna_id,
+      username: row.username,
+      full_name: row.nama_lengkap,
+      role: row.role_kode,
+      role_name: row.role_nama,
+      phone: row.nomor_hp,
+      email: row.email,
+      vehicle_plate: row.no_plat,
+      is_active: row.is_active
+   };
 };
 
 export const listCustomers = async () => {
-   // Return users who have role 'customer'
+    // Return users who have role 'USER' in the current schema.
    const [rows] = await pool.query(`
-     SELECT u.id, u.username, u.full_name, u.phone, u.email, u.vehicle_plate
-     FROM users u
-     JOIN roles r ON r.id = u.role_id
-     WHERE r.name = 'customer'
-     ORDER BY u.id DESC LIMIT 100
+       SELECT p.id, p.username, p.nama_lengkap AS full_name, p.nomor_hp AS phone, p.email, p.no_plat AS vehicle_plate
+       FROM pengguna p
+       JOIN roles r ON r.id = p.role_id
+      WHERE r.kode COLLATE utf8mb4_general_ci = 'USER' COLLATE utf8mb4_general_ci
+       ORDER BY p.id DESC
+       LIMIT 100
    `);
    return rows;
 };
@@ -42,39 +57,39 @@ export const listMechanics = async () => {
    return rows;
 };
 
-export const listRoles = async () => {
-   const [rows] = await pool.query('SELECT * FROM roles ORDER BY id');
-   return rows;
-};
-
-export const createUser = async (event, username, password, roleName = 'customer', fullName = null) => {
-   // Create user with role (uses SHA2 for compatibility with seed). Returns created user record (without password).
-   // Note: for production, switch to bcrypt and stronger validations.
+export const createUser = async (event, username, password, fullName = null) => {
+   // Create user with role code and return the saved record.
    const conn = await pool.getConnection();
    try {
       await conn.beginTransaction();
-      const [roleRows] = await conn.query('SELECT id FROM roles WHERE name = ?', [roleName]);
-      let roleId;
-      if (!roleRows || roleRows.length === 0) {
-         const [r] = await conn.query('INSERT INTO roles (name) VALUES (?)', [roleName]);
-         roleId = r.insertId;
-      } else {
-         roleId = roleRows[0].id;
-      }
+      await conn.query('CALL sp_pengguna_create(?, ?, ?, ?, ?, ?, ?, ?)', [
+         'USER',
+         username,
+         password,
+         fullName || username,
+         null,
+         null,
+         null,
+         null
+      ]);
 
-      const [exists] = await conn.query('SELECT id FROM users WHERE username = ?', [username]);
-      if (exists && exists.length > 0) {
-         await conn.rollback();
-         return { error: 'USERNAME_EXISTS' };
-      }
+      const [rows] = await conn.query(`
+        SELECT p.id, p.username, p.nama_lengkap AS full_name, p.role_id, r.kode AS role, r.nama AS role_label
+        FROM pengguna p
+        JOIN roles r ON r.id = p.role_id
+            WHERE p.username COLLATE utf8mb4_general_ci = ? COLLATE utf8mb4_general_ci
+        LIMIT 1
+      `, [username]);
 
-      const [ins] = await conn.query('INSERT INTO users (username, password_hash, role_id, full_name) VALUES (?, SHA2(?,256), ?, ?)', [username, password, roleId, fullName]);
-      const userId = ins.insertId;
       await conn.commit();
-      const [userRow] = await conn.query('SELECT id, username, full_name, role_id FROM users WHERE id = ?', [userId]);
-      return userRow[0];
+      return rows[0] || null;
    } catch (err) {
       await conn.rollback();
+      if (err && (err.code === 'ER_SIGNAL_EXCEPTION' || err.errno === 1644)) {
+         if (String(err.sqlMessage || err.message || '').includes('Username sudah digunakan')) {
+            return { error: 'USERNAME_EXISTS' };
+         }
+      }
       throw err;
    } finally {
       conn.release();

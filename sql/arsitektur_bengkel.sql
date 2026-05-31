@@ -7,6 +7,7 @@
 -- 3) transaksi: reservasi, detail_reservasi
 -- 4) semua logika bisnis dijalankan via stored procedure
 -- =========================================================
+DROP DATABASE IF EXISTS bengkel_db;
 
 CREATE DATABASE IF NOT EXISTS bengkel_db
   CHARACTER SET utf8mb4
@@ -170,8 +171,88 @@ INSERT INTO roles (kode, nama) VALUES
 ON DUPLICATE KEY UPDATE nama = VALUES(nama);
 
 -- =========================================================
+-- SEED DUMMY USERS
+-- =========================================================
+
+INSERT INTO pengguna (
+  role_id, username, password_hash, nama_lengkap, nomor_hp, email, alamat, no_plat
+)
+SELECT
+  r.id,
+  'admin',
+  SHA2('123', 256),
+  'Admin Bengkel',
+  NULL,
+  NULL,
+  NULL,
+  NULL
+FROM roles r
+WHERE r.kode = 'ADMIN'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pengguna p
+    WHERE p.username = 'admin'
+  );
+
+INSERT INTO pengguna (
+  role_id, username, password_hash, nama_lengkap, nomor_hp, email, alamat, no_plat
+)
+SELECT
+  r.id,
+  'mekanik',
+  SHA2('123', 256),
+  'Mekanik Bengkel',
+  NULL,
+  NULL,
+  NULL,
+  NULL
+FROM roles r
+WHERE r.kode = 'MECH'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pengguna p
+    WHERE p.username = 'mekanik'
+  );
+
+INSERT INTO pengguna (
+  role_id, username, password_hash, nama_lengkap, nomor_hp, email, alamat, no_plat
+)
+SELECT
+  r.id,
+  'kasir',
+  SHA2('123', 256),
+  'Kasir Bengkel',
+  NULL,
+  NULL,
+  NULL,
+  NULL
+FROM roles r
+WHERE r.kode = 'CASH'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM pengguna p
+    WHERE p.username = 'kasir'
+  );
+
+-- =========================================================
 -- STORED PROCEDURES - AUTH & MASTER
 -- =========================================================
+
+DROP PROCEDURE IF EXISTS sp_auth_login;
+DROP PROCEDURE IF EXISTS sp_pengguna_create;
+DROP PROCEDURE IF EXISTS sp_pengguna_update_profile;
+DROP PROCEDURE IF EXISTS sp_kendaraan_upsert;
+DROP PROCEDURE IF EXISTS sp_suku_cadang_upsert;
+DROP PROCEDURE IF EXISTS sp_reservasi_inisiasi;
+DROP PROCEDURE IF EXISTS sp_reservasi_penugasan_mekanik;
+DROP PROCEDURE IF EXISTS sp_reservasi_diagnosis_mekanik;
+DROP PROCEDURE IF EXISTS sp_reservasi_hitung_tagihan;
+DROP PROCEDURE IF EXISTS sp_pembayaran_kasir_validasi;
+DROP PROCEDURE IF EXISTS sp_laporan_pendapatan_harian;
+DROP PROCEDURE IF EXISTS sp_laporan_peringkat_konsumsi_suku_cadang;
+DROP PROCEDURE IF EXISTS sp_laporan_kinerja_diagnosis_mekanik;
+DROP PROCEDURE IF EXISTS sp_laporan_riwayat_servis_klien;
+DROP PROCEDURE IF EXISTS sp_laporan_defisit_stok_harian;
 
 DELIMITER $$
 
@@ -192,7 +273,7 @@ BEGIN
     u.is_active
   FROM pengguna u
   JOIN roles r ON r.id = u.role_id
-  WHERE u.username = p_username
+  WHERE u.username COLLATE utf8mb4_general_ci = p_username COLLATE utf8mb4_general_ci
     AND u.password_hash = SHA2(p_password, 256)
     AND u.is_active = 1;
 END$$
@@ -209,13 +290,20 @@ CREATE PROCEDURE sp_pengguna_create(
 )
 BEGIN
   DECLARE v_role_id INT;
-  SELECT id INTO v_role_id FROM roles WHERE kode = p_role_kode LIMIT 1;
+  SELECT id INTO v_role_id
+  FROM roles
+  WHERE kode COLLATE utf8mb4_general_ci = p_role_kode COLLATE utf8mb4_general_ci
+  LIMIT 1;
 
   IF v_role_id IS NULL THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Role tidak ditemukan';
   END IF;
 
-  IF EXISTS (SELECT 1 FROM pengguna WHERE username = p_username) THEN
+  IF EXISTS (
+    SELECT 1
+    FROM pengguna
+    WHERE username COLLATE utf8mb4_general_ci = p_username COLLATE utf8mb4_general_ci
+  ) THEN
     SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Username sudah digunakan';
   END IF;
 

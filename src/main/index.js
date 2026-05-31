@@ -80,13 +80,9 @@ app.whenReady().then(() => {
     return await model.createWorkOrder(event, userId, mechanicId, partsJson)
   })
 
-  ipcMain.handle('roles:list', async () => {
-    return await model.listRoles()
-  })
-
-  ipcMain.handle('auth:register', async (event, { username, password, role, fullName }) => {
+  ipcMain.handle('auth:register', async (event, { username, password, fullName }) => {
     try {
-      const u = await model.createUser(event, username, password, role, fullName)
+      const u = await model.createUser(event, username, password, fullName)
       if (u && u.error === 'USERNAME_EXISTS') return { ok: false, error: 'username_exists' }
       return { ok: true, user: u }
     } catch (err) {
