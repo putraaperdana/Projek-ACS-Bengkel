@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../auth'
+import '../assets/register.css'
 
 export default function Login() {
   const [username, setUsername] = useState('')
@@ -17,21 +18,45 @@ export default function Login() {
   }
 
   return (
-    <div style={{padding:20}}>
-      <h2>Login</h2>
-      <form onSubmit={submit}>
-        <div>
-          <label>Username</label>
-          <input value={username} onChange={e=>setUsername(e.target.value)} />
+    <div className="register-shell">
+      <div className="register-glow register-glow-left" />
+      <div className="register-glow register-glow-right" />
+      <section className="register-card">
+        <div className="register-copy">
+          <span className="register-badge">Bengkel ACS</span>
+          <h2>Login</h2>
+          <p>Masuk ke akun Anda untuk akses dashboard bengkel dan daftar pelanggan.</p>
         </div>
-        <div>
-          <label>Password</label>
-          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} />
-        </div>
-        <button type="submit">Login</button>
-        {error && <div style={{color:'red'}}>{error}</div>}
-      </form>
-      <div style={{marginTop:10}}>No account? <Link to="/register">Register</Link></div>
+        <form className="register-form" onSubmit={submit}>
+          <h1>Login</h1>
+          <p className="register-subtitle">Gunakan username dan password yang valid.</p>
+
+          <label>
+            <span>Username</span>
+            <input
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              placeholder="username"
+              autoComplete="username"
+            />
+          </label>
+
+          <label>
+            <span>Password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              placeholder="password"
+              autoComplete="current-password"
+            />
+          </label>
+
+          <button type="submit">Masuk</button>
+          {error && <div className="register-error">{error}</div>}
+          <p className="register-subtitle">Belum punya akun? <Link className="link-muted" to="/register">Register</Link></p>
+        </form>
+      </section>
     </div>
   )
 }
