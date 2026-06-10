@@ -1,62 +1,47 @@
-import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { useAuth } from '../auth'
-import '../assets/register.css'
+import React, { useState } from 'react';
+import { Container, Box, TextField, Button, Typography, Alert } from '@mui/material';
 
-export default function Login() {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState(null)
-  const { login } = useAuth()
-  const navigate = useNavigate()
+export default function Login({ onLogin }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const submit = async (e) => {
-    e.preventDefault()
-    const res = await login(username, password)
-    if (res.ok) navigate('/dashboard')
-    else setError(res.error || 'Login failed')
-  }
+  const submit = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const user = await window.api.login(username, password);
+      onLogin(user);
+    } catch (err) {
+      setError(err.message || String(err));
+    } finally { setLoading(false); }
+  };
 
   return (
-    <div className="register-shell">
-      <div className="register-glow register-glow-left" />
-      <div className="register-glow register-glow-right" />
-      <section className="register-card">
-        <div className="register-copy">
-          <span className="register-badge">Bengkel ACS</span>
-          <h2>Login</h2>
-          <p>Masuk ke akun Anda untuk akses dashboard bengkel dan daftar pelanggan.</p>
-        </div>
-        <form className="register-form" onSubmit={submit}>
-          <h1>Login</h1>
-          <p className="register-subtitle">Gunakan username dan password yang valid.</p>
-
-          <label>
-            <span>Username</span>
-            <input
-              value={username}
-              onChange={e => setUsername(e.target.value)}
-              placeholder="username"
-              autoComplete="username"
-            />
-          </label>
-
-          <label>
-            <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="password"
-              autoComplete="current-password"
-            />
-          </label>
-
-          <button type="submit">Masuk</button>
-          {error && <div className="register-error">{error}</div>}
-          <p className="register-subtitle">Belum punya akun? <Link className="link-muted" to="/register">Register</Link></p>
-        </form>
-      </section>
-    </div>
-  )
+    <Container sx={{ py: 6, maxWidth: 480 }}>
+      <Box sx={{ p: 3, border: '1px solid #ddd', borderRadius: 2 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>Login Mekanik</Typography>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+        <TextField
+          label="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          fullWidth
+          sx={{ mb: 2 }}
+        />
+        <TextField
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          fullWidth
+          sx={{ mb: 2 }}
+        />
+        <Button variant="contained" onClick={submit} disabled={loading}>
+          {loading ? 'Memproses...' : 'Login'}
+        </Button>
+      </Box>
+    </Container>
+  );
 }

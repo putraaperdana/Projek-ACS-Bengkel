@@ -1,8 +1,9 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import * as model from './model'
+import { completeRepair, getKendaraan, getCategories, getSukuByKategori, getReports, login, addSukuCadang, addKendaraan, addLogPerbaikan, deleteKendaraan } from './model'
+import fs from 'fs'
 
 function createWindow() {
   // Create the browser window.
@@ -53,43 +54,39 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
-  // Auth: login
-  ipcMain.handle('auth:login', async (event, { username, password }) => {
-    try {
-      const user = await model.authenticate(event, username, password)
-      return { ok: !!user, user }
-    } catch (err) {
-      console.error('auth:login error', err)
-      return { ok: false, error: err.message }
-    }
-  })
+  // Maintenance system handlers
+  ipcMain.handle('completeRepair', completeRepair)
+  ipcMain.handle('getKendaraan', getKendaraan)
+  ipcMain.handle('getCategories', getCategories)
+  ipcMain.handle('getSukuByKategori', getSukuByKategori)
+  ipcMain.handle('getReports', getReports)
+  ipcMain.handle('login', login)
+  ipcMain.handle('addSukuCadang', addSukuCadang)
+  ipcMain.handle('addKendaraan', addKendaraan)
+  ipcMain.handle('addLogPerbaikan', addLogPerbaikan)
+  ipcMain.handle('deleteKendaraan', deleteKendaraan)
 
-  ipcMain.handle('customers:list', async () => {
-    return await model.listCustomers()
-  })
-
-  ipcMain.handle('parts:list', async () => {
-    return await model.listParts()
-  })
-
-  ipcMain.handle('mechanics:list', async () => {
-    return await model.listMechanics()
-  })
-
-  ipcMain.handle('workorders:create', async (event, userId, mechanicId, partsJson) => {
-    return await model.createWorkOrder(event, userId, mechanicId, partsJson)
-  })
-
-  ipcMain.handle('auth:register', async (event, { username, password, fullName }) => {
-    try {
-      const u = await model.createUser(event, username, password, fullName)
-      if (u && u.error === 'USERNAME_EXISTS') return { ok: false, error: 'username_exists' }
-      return { ok: true, user: u }
-    } catch (err) {
-      console.error('auth:register error', err)
-      return { ok: false, error: err.message }
-    }
-  })
+  ipcMain.handle('printPDF', async (event) => {
+      const savePath = dialog.showSaveDialogSync({
+         title: "Save report",
+         defaultPath: "report.pdf",
+      });
+      if (savePath) {
+         const win = BrowserWindow.fromWebContents(event.sender);
+         // options: https://www.electronjs.org/docs/latest/api/web-contents#contentsprinttopdfoptions
+         win.webContents
+            .printToPDF({ printBackground: true, pageSize: "A4" })
+            .then((data) => {
+               fs.writeFile(savePath, data, (error) => {
+               if (error) throw error;
+               console.log(`Wrote PDF successfully to ${savePath}`);
+               });
+            })
+            .catch((err) => {
+               throw err;
+            });
+      }
+  });
 
   createWindow()
 
