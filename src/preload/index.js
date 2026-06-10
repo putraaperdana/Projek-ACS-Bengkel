@@ -1,21 +1,25 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
-// Custom APIs for renderer
+// Custom APIs for renderer and maintenance system APIs
 const api = {
-  printPDF: () => ipcRenderer.invoke('printPDF')
+  printPDF: () => ipcRenderer.invoke('printPDF'),
+  completeRepair: (payload) => ipcRenderer.invoke('completeRepair', payload),
+  getKendaraan: () => ipcRenderer.invoke('getKendaraan'),
+  getCategories: () => ipcRenderer.invoke('getCategories'),
+  getSukuByKategori: (kategori) => ipcRenderer.invoke('getSukuByKategori', kategori),
+  getReports: () => ipcRenderer.invoke('getReports'),
+  login: (username, password) => ipcRenderer.invoke('login', username, password),
+  addSukuCadang: (payload) => ipcRenderer.invoke('addSukuCadang', payload),
+  addKendaraan: (payload) => ipcRenderer.invoke('addKendaraan', payload),
+  updateKendaraanStatus: (payload) => ipcRenderer.invoke('updateKendaraanStatus', payload),
+  getMechanics: () => ipcRenderer.invoke('getMechanics'),
+  assignRepair: (payload) => ipcRenderer.invoke('assignRepair', payload),
+  getKendaraanForMekanik: (id_user) => ipcRenderer.invoke('getKendaraanForMekanik', id_user),
+  getAssignedRepairByVehicle: (payload) => ipcRenderer.invoke('getAssignedRepairByVehicle', payload),
+  addLogPerbaikan: (payload) => ipcRenderer.invoke('addLogPerbaikan', payload),
+  deleteKendaraan: (nomor_polisi) => ipcRenderer.invoke('deleteKendaraan', nomor_polisi)
 }
-// Maintenance system APIs
-api.completeRepair = (payload) => ipcRenderer.invoke('completeRepair', payload);
-api.getKendaraan = () => ipcRenderer.invoke('getKendaraan');
-api.getCategories = () => ipcRenderer.invoke('getCategories');
-api.getSukuByKategori = (kategori) => ipcRenderer.invoke('getSukuByKategori', kategori);
-api.getReports = () => ipcRenderer.invoke('getReports');
-api.login = (username, password) => ipcRenderer.invoke('login', username, password);
-api.addSukuCadang = (payload) => ipcRenderer.invoke('addSukuCadang', payload);
-api.addKendaraan = (payload) => ipcRenderer.invoke('addKendaraan', payload);
-api.addLogPerbaikan = (payload) => ipcRenderer.invoke('addLogPerbaikan', payload);
-api.deleteKendaraan = (nomor_polisi) => ipcRenderer.invoke('deleteKendaraan', nomor_polisi);
 
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise

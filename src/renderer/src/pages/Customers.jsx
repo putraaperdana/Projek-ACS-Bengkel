@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
-export default function Customers(){
+export default function Customers() {
   const [rows, setRows] = useState([])
-  useEffect(()=>{
-    window.electron.ipcRenderer.invoke('customers:list').then(r=>setRows(r))
-  },[])
+  useEffect(() => {
+    window.electron.ipcRenderer.invoke('customers:list').then((r) => setRows(r))
+  }, [])
   return (
     <div className="page-shell">
       <section className="table-card">
         <div className="dashboard-header">
           <h2>Customers</h2>
-          <Link className="link-muted" to="/dashboard">Kembali ke Dashboard</Link>
+          <Link className="link-muted" to="/dashboard">
+            Kembali ke Dashboard
+          </Link>
         </div>
         <div className="table-scroll">
           <table className="data-table">
@@ -24,7 +26,7 @@ export default function Customers(){
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => (
+              {rows.map((r) => (
                 <tr key={r.id}>
                   <td>{r.id}</td>
                   <td>{r.full_name}</td>

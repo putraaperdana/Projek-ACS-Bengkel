@@ -2,7 +2,23 @@ import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { completeRepair, getKendaraan, getCategories, getSukuByKategori, getReports, login, addSukuCadang, addKendaraan, addLogPerbaikan, deleteKendaraan } from './model'
+import {
+  completeRepair,
+  getKendaraan,
+  getCategories,
+  getSukuByKategori,
+  getReports,
+  login,
+  addSukuCadang,
+  addKendaraan,
+  updateKendaraanStatus,
+  getMechanics,
+  getKendaraanForMekanik,
+  getAssignedRepairByVehicle,
+  assignRepair,
+  addLogPerbaikan,
+  deleteKendaraan
+} from './model'
 import fs from 'fs'
 
 function createWindow() {
@@ -57,36 +73,48 @@ app.whenReady().then(() => {
   // Maintenance system handlers
   ipcMain.handle('completeRepair', completeRepair)
   ipcMain.handle('getKendaraan', getKendaraan)
+  ipcMain.handle('getKendaraanForMekanik', getKendaraanForMekanik)
   ipcMain.handle('getCategories', getCategories)
   ipcMain.handle('getSukuByKategori', getSukuByKategori)
   ipcMain.handle('getReports', getReports)
   ipcMain.handle('login', login)
+  ipcMain.handle('getMechanics', getMechanics)
+  ipcMain.handle('assignRepair', assignRepair)
+  ipcMain.handle('getAssignedRepairByVehicle', getAssignedRepairByVehicle)
   ipcMain.handle('addSukuCadang', addSukuCadang)
   ipcMain.handle('addKendaraan', addKendaraan)
+  ipcMain.handle('updateKendaraanStatus', updateKendaraanStatus)
   ipcMain.handle('addLogPerbaikan', addLogPerbaikan)
   ipcMain.handle('deleteKendaraan', deleteKendaraan)
 
   ipcMain.handle('printPDF', async (event) => {
-      const savePath = dialog.showSaveDialogSync({
-         title: "Save report",
-         defaultPath: "report.pdf",
-      });
-      if (savePath) {
-         const win = BrowserWindow.fromWebContents(event.sender);
-         // options: https://www.electronjs.org/docs/latest/api/web-contents#contentsprinttopdfoptions
-         win.webContents
-            .printToPDF({ printBackground: true, pageSize: "A4" })
-            .then((data) => {
-               fs.writeFile(savePath, data, (error) => {
-               if (error) throw error;
-               console.log(`Wrote PDF successfully to ${savePath}`);
-               });
-            })
-            .catch((err) => {
-               throw err;
-            });
+    const { canceled, filePath: savePath } = await dialog.showSaveDialog({
+      title: 'Save report',
+      defaultPath: 'report.pdf'
+    })
+
+    if (canceled || !savePath) {
+      return { success: false, canceled: true }
+    }
+
+    const win = BrowserWindow.fromWebContents(event.sender)
+    try {
+      const data = await win.webContents.printToPDF({ printBackground: true, pageSize: 'A4' })
+      await fs.promises.writeFile(savePath, data)
+      return { success: true, path: savePath }
+    } catch (err) {
+      const message = err?.message || 'Failed to generate PDF'
+      const locked = err?.code === 'EBUSY' || err?.code === 'EPERM' || err?.code === 'EACCES'
+      if (locked) {
+        return {
+          success: false,
+          canceled: false,
+          error: `File sedang digunakan atau terkunci: ${savePath}. Tutup file tersebut dan coba lagi.`
+        }
       }
-  });
+      return { success: false, canceled: false, error: message }
+    }
+  })
 
   createWindow()
 

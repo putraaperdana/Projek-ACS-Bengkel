@@ -82,6 +82,115 @@ BEGIN
 END //
 DELIMITER ;
 
+DROP PROCEDURE IF EXISTS SP_UpdateKendaraanStatus;
+DELIMITER //
+CREATE PROCEDURE SP_UpdateKendaraanStatus(
+    IN p_nomor_polisi VARCHAR(64),
+    IN p_status VARCHAR(20)
+)
+BEGIN
+    UPDATE Kendaraan_Operasional
+    SET status = p_status
+    WHERE nomor_polisi = p_nomor_polisi;
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_LoginUser;
+DELIMITER //
+CREATE PROCEDURE SP_LoginUser(IN p_username VARCHAR(100), IN p_password VARCHAR(255))
+BEGIN
+  SELECT u.id_user, u.username, u.nama, r.nama_role AS role
+  FROM users u
+  JOIN roles r ON u.id_role = r.id_role
+  WHERE u.username = p_username AND u.password = p_password
+  LIMIT 1;
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_GetMechanics;
+DELIMITER //
+CREATE PROCEDURE SP_GetMechanics()
+BEGIN
+  SELECT u.id_user, u.nama, u.username
+  FROM users u
+  JOIN roles r ON u.id_role = r.id_role
+  WHERE r.nama_role = 'Mekanik';
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_GetKendaraanForMekanik;
+DELIMITER //
+CREATE PROCEDURE SP_GetKendaraanForMekanik(IN p_id_mekanik INT)
+BEGIN
+  SELECT ko.nomor_polisi, ko.tahun, ko.odometer, ko.status,
+         lp.id_log, lp.status AS repair_status, lp.assigned_at, lp.tanggal
+  FROM Kendaraan_Operasional ko
+  JOIN Log_Perbaikan lp ON lp.nomor_polisi = ko.nomor_polisi
+  WHERE lp.id_mekanik = p_id_mekanik
+    AND lp.status != 'Selesai'
+  ORDER BY lp.assigned_at DESC;
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_AssignRepairToMekanik;
+DELIMITER //
+CREATE PROCEDURE SP_AssignRepairToMekanik(
+    IN p_nomor_polisi VARCHAR(64),
+    IN p_id_mekanik INT,
+    IN p_assigned_by INT
+)
+BEGIN
+  DECLARE v_exists INT DEFAULT 0;
+  DECLARE v_log_id INT DEFAULT NULL;
+
+  SELECT COUNT(*) INTO v_exists
+  FROM Log_Perbaikan
+  WHERE nomor_polisi = p_nomor_polisi AND status != 'Selesai';
+
+  IF v_exists > 0 THEN
+    SELECT id_log INTO v_log_id
+    FROM Log_Perbaikan
+    WHERE nomor_polisi = p_nomor_polisi AND status != 'Selesai'
+    ORDER BY assigned_at DESC
+    LIMIT 1;
+
+    UPDATE Log_Perbaikan
+    SET id_mekanik = p_id_mekanik,
+        assigned_by = p_assigned_by,
+        assigned_at = NOW(),
+        status = 'Diperbaiki'
+    WHERE id_log = v_log_id;
+  ELSE
+    INSERT INTO Log_Perbaikan (nomor_polisi, id_mekanik, assigned_by, assigned_at, tanggal, status)
+    VALUES (p_nomor_polisi, p_id_mekanik, p_assigned_by, NOW(), NOW(), 'Diperbaiki');
+    SELECT LAST_INSERT_ID() INTO v_log_id;
+  END IF;
+
+  UPDATE Kendaraan_Operasional
+  SET status = 'Diperbaiki'
+  WHERE nomor_polisi = p_nomor_polisi;
+END //
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS SP_GetAssignedRepairByVehicle;
+DELIMITER //
+CREATE PROCEDURE SP_GetAssignedRepairByVehicle(
+    IN p_nomor_polisi VARCHAR(64),
+    IN p_id_mekanik INT
+)
+BEGIN
+  SELECT lp.id_log, lp.nomor_polisi, lp.id_mekanik, lp.status, lp.assigned_at, lp.tanggal,
+         ko.odometer, ko.status AS vehicle_status
+  FROM Log_Perbaikan lp
+  JOIN Kendaraan_Operasional ko ON ko.nomor_polisi = lp.nomor_polisi
+  WHERE lp.nomor_polisi = p_nomor_polisi
+    AND lp.id_mekanik = p_id_mekanik
+    AND lp.status != 'Selesai'
+  ORDER BY lp.assigned_at DESC
+  LIMIT 1;
+END //
+DELIMITER ;
+
 -- =====================================================
 -- Exact SQL queries / views for required reports
 -- 1) Laporan Kesiapan Armada: Percentage of 'Aktif' vs 'Diperbaiki'

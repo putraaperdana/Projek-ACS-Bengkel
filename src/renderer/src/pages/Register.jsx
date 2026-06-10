@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import '../assets/register.css'
 
-export default function Register(){
+export default function Register() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -11,7 +11,11 @@ export default function Register(){
 
   const submit = async (e) => {
     e.preventDefault()
-    const res = await window.electron.ipcRenderer.invoke('auth:register', { username, password, fullName })
+    const res = await window.electron.ipcRenderer.invoke('auth:register', {
+      username,
+      password,
+      fullName
+    })
     if (res.ok) navigate('/login')
     else setError(res.error || 'Register failed')
   }
@@ -26,8 +30,8 @@ export default function Register(){
           <span className="register-badge">Bengkel ACS</span>
           <h2>Create account</h2>
           <p>
-            Daftar sekali, akun akan otomatis tersimpan sebagai customer.
-            Data yang dikirim masuk ke tabel <strong>pengguna</strong> lewat backend.
+            Daftar sekali, akun akan otomatis tersimpan sebagai customer. Data yang dikirim masuk ke
+            tabel <strong>pengguna</strong> lewat backend.
           </p>
           <ul>
             <li>Username unik</li>
@@ -44,7 +48,7 @@ export default function Register(){
             <span>Full name</span>
             <input
               value={fullName}
-              onChange={e => setFullName(e.target.value)}
+              onChange={(e) => setFullName(e.target.value)}
               placeholder="Nama lengkap"
               autoComplete="name"
             />
@@ -54,7 +58,7 @@ export default function Register(){
             <span>Username</span>
             <input
               value={username}
-              onChange={e => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="username"
               autoComplete="username"
             />
@@ -65,7 +69,7 @@ export default function Register(){
             <input
               type="password"
               value={password}
-              onChange={e => setPassword(e.target.value)}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="password"
               autoComplete="new-password"
             />

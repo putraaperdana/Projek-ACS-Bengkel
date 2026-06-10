@@ -1,26 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Typography, CircularProgress, Box, Table, TableHead, TableRow, TableCell, TableBody, Paper } from '@mui/material';
+import React, { useState, useEffect } from 'react'
+import {
+  Container,
+  Typography,
+  CircularProgress,
+  Box,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Paper,
+  Button,
+  Snackbar,
+  Alert
+} from '@mui/material'
 
 export default function Reports() {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' })
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load()
+  }, [])
   const load = async () => {
-    setLoading(true);
+    setLoading(true)
     try {
-      const r = await window.api.getReports();
-      setData(r);
-    } finally { setLoading(false); }
-  };
+      const r = await window.api.getReports()
+      setData(r)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  if (loading) return <Container sx={{ py: 3 }}><CircularProgress /></Container>;
+  const handlePrintPdf = async () => {
+    try {
+      const result = await window.api.printPDF()
+      if (result?.success) {
+        setToast({ open: true, message: `PDF tersimpan ke ${result.path}`, severity: 'success' })
+      } else if (result?.canceled) {
+        setToast({ open: true, message: 'Cetak PDF dibatalkan', severity: 'info' })
+      } else {
+        setToast({ open: true, message: result?.error || 'Gagal membuat PDF', severity: 'error' })
+      }
+    } catch (err) {
+      setToast({ open: true, message: err.message || 'Error saat mencetak PDF', severity: 'error' })
+    }
+  }
 
-  const kesiapan = Array.isArray(data?.kesiapan_armada) && data.kesiapan_armada[0] ? data.kesiapan_armada[0] : null;
+  if (loading)
+    return (
+      <Container sx={{ py: 3 }}>
+        <CircularProgress />
+      </Container>
+    )
+
+  const kesiapan =
+    Array.isArray(data?.kesiapan_armada) && data.kesiapan_armada[0] ? data.kesiapan_armada[0] : null
 
   return (
-    <Container sx={{ py: 3 }}>
-      <Typography variant="h5" gutterBottom>Laporan</Typography>
+    <Container className="report-print-area" sx={{ py: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h5">Laporan</Typography>
+        <Button className="no-print" variant="contained" onClick={handlePrintPdf}>
+          Cetak PDF
+        </Button>
+      </Box>
 
       <Box sx={{ mt: 2 }} component={Paper} variant="outlined">
         <Box sx={{ p: 2 }}>
@@ -28,15 +73,30 @@ export default function Reports() {
           {kesiapan ? (
             <Table size="small">
               <TableBody>
-                <TableRow><TableCell>Aktif</TableCell><TableCell>{kesiapan.aktif_count}</TableCell></TableRow>
-                <TableRow><TableCell>Diperbaiki</TableCell><TableCell>{kesiapan.diperbaiki_count}</TableCell></TableRow>
-                <TableRow><TableCell>Total</TableCell><TableCell>{kesiapan.total}</TableCell></TableRow>
-                <TableRow><TableCell>% Aktif</TableCell><TableCell>{kesiapan.pct_aktif}%</TableCell></TableRow>
-                <TableRow><TableCell>% Diperbaiki</TableCell><TableCell>{kesiapan.pct_diperbaiki}%</TableCell></TableRow>
+                <TableRow>
+                  <TableCell>Aktif</TableCell>
+                  <TableCell>{kesiapan.aktif_count}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Diperbaiki</TableCell>
+                  <TableCell>{kesiapan.diperbaiki_count}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>Total</TableCell>
+                  <TableCell>{kesiapan.total}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>% Aktif</TableCell>
+                  <TableCell>{kesiapan.pct_aktif}%</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell>% Diperbaiki</TableCell>
+                  <TableCell>{kesiapan.pct_diperbaiki}%</TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           ) : (
-            <Typography color="text.secondary">Tidak ada data kesiapan armada.</Typography>
+            <Typography color="text.secondary">Tidak ada data kesiapan kendaraan.</Typography>
           )}
         </Box>
       </Box>
@@ -56,7 +116,7 @@ export default function Reports() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.defisit_inventaris.map(r => (
+                {data.defisit_inventaris.map((r) => (
                   <TableRow key={r.id_suku_cadang}>
                     <TableCell>{r.id_suku_cadang}</TableCell>
                     <TableCell>{r.nama}</TableCell>
@@ -68,7 +128,9 @@ export default function Reports() {
               </TableBody>
             </Table>
           ) : (
-            <Typography color="text.secondary">Tidak ada suku cadang mendekati atau di bawah batas minimum.</Typography>
+            <Typography color="text.secondary">
+              Tidak ada suku cadang mendekati atau di bawah batas minimum.
+            </Typography>
           )}
         </Box>
       </Box>
@@ -85,7 +147,7 @@ export default function Reports() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.frekuensi_kerusakan.map(r => (
+                {data.frekuensi_kerusakan.map((r) => (
                   <TableRow key={r.nomor_polisi}>
                     <TableCell>{r.nomor_polisi}</TableCell>
                     <TableCell>{r.jumlah_kerusakan}</TableCell>
@@ -111,7 +173,7 @@ export default function Reports() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.distribusi_penugasan.map(r => (
+                {data.distribusi_penugasan.map((r) => (
                   <TableRow key={r.id_mekanik}>
                     <TableCell>{r.id_mekanik}</TableCell>
                     <TableCell>{r.jumlah_penugasan}</TableCell>
@@ -138,7 +200,7 @@ export default function Reports() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.konsumsi_komponen.map(r => (
+                {data.konsumsi_komponen.map((r) => (
                   <TableRow key={r.id_suku_cadang}>
                     <TableCell>{r.id_suku_cadang}</TableCell>
                     <TableCell>{r.nama_suku_cadang}</TableCell>
@@ -152,6 +214,16 @@ export default function Reports() {
           )}
         </Box>
       </Box>
+      <Snackbar
+        className="no-print"
+        open={toast.open}
+        autoHideDuration={6000}
+        onClose={() => setToast({ ...toast, open: false })}
+      >
+        <Alert severity={toast.severity} onClose={() => setToast({ ...toast, open: false })}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
     </Container>
-  );
+  )
 }
